@@ -95,7 +95,7 @@ def extract_details(callsign, icao24):
 # ==== UI ====
 
 st.set_page_config(page_title="Flights Overhead from SJC", layout="centered")
-st_autorefresh(interval=30000, key="flight_refresh")
+#st_autorefresh(interval=30000, key="flight_refresh")
 
 st.title("🛫 Flights Overhead")
 now_pst = datetime.now(ZoneInfo("America/Los_Angeles"))
