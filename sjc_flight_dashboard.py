@@ -4,6 +4,7 @@ import math
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from streamlit_autorefresh import st_autorefresh
+import os
 
 # ==== CONFIG ====
 HOME_LAT = 37.399746   # your home latitude
@@ -48,6 +49,16 @@ AIRCRAFT_TYPES = {
     "MD90": "McDonnell Douglas MD-90"
 }
 
+# ==== AUTH CONFIG ====
+# Try to get credentials from environment variables
+OPENSKY_USERNAME = os.environ.get("OPENSKY_USERNAME")
+OPENSKY_PASSWORD = os.environ.get("OPENSKY_PASSWORD")
+
+if not OPENSKY_USERNAME or not OPENSKY_PASSWORD:
+    st.warning("Enter your OpenSky credentials. (They will not be stored)")
+    OPENSKY_USERNAME = st.text_input("OpenSky Username", type="default", key="opensky_user")
+    OPENSKY_PASSWORD = st.text_input("OpenSky Password", type="password", key="opensky_pass")
+
 # ==== FUNCTIONS ====
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -58,11 +69,24 @@ def haversine(lat1, lon1, lat2, lon2):
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 def get_flights():
+    # Use Streamlit session state for caching
+    import time
+    now = time.time()
+    cache_key = "flight_cache"
+    cache_time_key = "flight_cache_time"
+    cache_ttl = 30  # seconds
+    if cache_key in st.session_state and cache_time_key in st.session_state:
+        if now - st.session_state[cache_time_key] < cache_ttl:
+            return st.session_state[cache_key]
     url = "https://opensky-network.org/api/states/all"
     try:
-        r = requests.get(url, timeout=10)
+        auth = (OPENSKY_USERNAME, OPENSKY_PASSWORD) if OPENSKY_USERNAME and OPENSKY_PASSWORD else None
+        r = requests.get(url, timeout=10, auth=auth)
         r.raise_for_status()
-        return r.json().get("states", [])
+        flights = r.json().get("states", [])
+        st.session_state[cache_key] = flights
+        st.session_state[cache_time_key] = now
+        return flights
     except Exception as e:
         st.error(f"Error fetching flight data: {e}")
         return []
@@ -92,10 +116,30 @@ def extract_details(callsign, icao24):
 
     return destination, airline, f"{airline_code}{flight_number}", aircraft_type
 
+def lookup_aircraft_type(icao24):
+    """Lookup aircraft type/model from OpenSky aircraft database using icao24. Cache results in session state."""
+    if not icao24:
+        return "Unknown Type"
+    cache_key = f"aircraft_type_{icao24}"
+    if cache_key in st.session_state:
+        return st.session_state[cache_key]
+    url = f"https://opensky-network.org/api/metadata/aircraft/icao24/{icao24}"
+    try:
+        auth = (OPENSKY_USERNAME, OPENSKY_PASSWORD) if OPENSKY_USERNAME and OPENSKY_PASSWORD else None
+        r = requests.get(url, timeout=10, auth=auth)
+        r.raise_for_status()
+        data = r.json()
+        # Try to get model or type
+        ac_type = data.get("model") or data.get("type") or "Unknown Type"
+        st.session_state[cache_key] = ac_type
+        return ac_type
+    except Exception:
+        return "Unknown Type"
+
 # ==== UI ====
 
 st.set_page_config(page_title="Flights Overhead from SJC", layout="centered")
-#st_autorefresh(interval=30000, key="flight_refresh")
+st_autorefresh(interval=30000, key="flight_refresh")
 
 st.title("🛫 Flights Overhead")
 now_pst = datetime.now(ZoneInfo("America/Los_Angeles"))
@@ -111,7 +155,8 @@ for f in flights:
     on_ground = f[8]
 
     if lat and lon and is_near_home(lat, lon):
-        dest, airline, flight_no, ac_type = extract_details(callsign, icao24)
+        dest, airline, flight_no, _ = extract_details(callsign, icao24)
+        ac_type = lookup_aircraft_type(icao24)
         visible.append({
             "Destination": dest,
             "Airline": airline,
