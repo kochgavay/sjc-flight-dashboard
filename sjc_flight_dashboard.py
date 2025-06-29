@@ -51,8 +51,8 @@ AIRCRAFT_TYPES = {
 
 # ==== AUTH CONFIG ====
 # Use provided OpenSky credentials directly
-OPENSKY_USERNAME = "tushk@umich.edu-api-client"
-OPENSKY_PASSWORD = "V422R3Q8TnNd9L04Pe6sq8khsjMkwnB0"
+#OPENSKY_USERNAME = "tushk@umich.edu-api-client"
+#OPENSKY_PASSWORD = "V422R3Q8TnNd9L04Pe6sq8khsjMkwnB0"
 
 # ==== FUNCTIONS ====
 
@@ -75,7 +75,7 @@ def get_flights():
             return st.session_state[cache_key]
     url = "https://opensky-network.org/api/states/all"
     try:
-        auth = (OPENSKY_USERNAME, OPENSKY_PASSWORD) if OPENSKY_USERNAME and OPENSKY_PASSWORD else None
+       # auth = (OPENSKY_USERNAME, OPENSKY_PASSWORD) if OPENSKY_USERNAME and OPENSKY_PASSWORD else None
         r = requests.get(url, timeout=10, auth=auth)
         r.raise_for_status()
         flights = r.json().get("states", [])
@@ -171,7 +171,7 @@ if visible:
 else:
     st.markdown("""
     <div style="padding:20px; margin-top:20px; text-align:center; font-size:1.5rem; color:#555;">
-        🌤️ Clear skies above!
+        🌤️ Clear skies!
     </div>
     """, unsafe_allow_html=True)
 
