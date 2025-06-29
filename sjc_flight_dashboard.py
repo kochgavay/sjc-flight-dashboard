@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import math
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from streamlit_autorefresh import st_autorefresh
 
 # ==== CONFIG ====
@@ -97,7 +98,8 @@ st.set_page_config(page_title="Flights Overhead from SJC", layout="centered")
 st_autorefresh(interval=30000, key="flight_refresh")
 
 st.title("🛫 Flights Overhead")
-st.caption(f"Live from SJC | {datetime.now().astimezone(pytz.timezone('US/Pacific')).strftime('%Y-%m-%d %H:%M:%S %Z')}")
+now_pst = datetime.now(ZoneInfo("America/Los_Angeles"))
+st.caption(f"Live from SJC | {now_pst.strftime('%Y-%m-%d %I:%M:%S %p')} PST")
 
 flights = get_flights()
 visible = []
