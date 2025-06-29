@@ -110,7 +110,7 @@ for f in flights:
     lon, lat = f[5], f[6]
     on_ground = f[8]
 
-    if lat and lon and is_near_home(lat, lon) and is_sjc_flight(callsign):
+    if lat and lon and is_near_home(lat, lon):
         dest, airline, flight_no, ac_type = extract_details(callsign, icao24)
         visible.append({
             "Destination": dest,
