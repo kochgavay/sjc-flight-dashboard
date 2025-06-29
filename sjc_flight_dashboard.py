@@ -76,7 +76,7 @@ def get_flights():
     url = "https://opensky-network.org/api/states/all"
     try:
        # auth = (OPENSKY_USERNAME, OPENSKY_PASSWORD) if OPENSKY_USERNAME and OPENSKY_PASSWORD else None
-        r = requests.get(url, timeout=10, auth=auth)
+        r = requests.get(url, timeout=10)
         r.raise_for_status()
         flights = r.json().get("states", [])
         st.session_state[cache_key] = flights
