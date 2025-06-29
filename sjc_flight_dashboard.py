@@ -51,9 +51,7 @@ AIRCRAFT_TYPES = {
 }
 
 # ==== AUTH CONFIG ====
-# Use provided OpenSky website credentials directly
-OPENSKY_USERNAME = "tushk@umich.edu"
-OPENSKY_PASSWORD = "RgX7ZLqKK@sJ58."
+# No authentication (use free OpenSky API, subject to rate limits)
 
 # ==== FUNCTIONS ====
 
@@ -64,26 +62,26 @@ def haversine(lat1, lon1, lat2, lon2):
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-def get_flights(force_refresh=False):
+def get_flights():
+    import time
     now = time.time()
     cache_key = "flight_cache"
     cache_time_key = "flight_cache_time"
     cache_ttl = 30  # seconds
-    if not force_refresh and cache_key in st.session_state and cache_time_key in st.session_state:
+    if cache_key in st.session_state and cache_time_key in st.session_state:
         if now - st.session_state[cache_time_key] < cache_ttl:
-            return st.session_state[cache_key], (cache_ttl - int(now - st.session_state[cache_time_key]))
+            return st.session_state[cache_key]
     url = "https://opensky-network.org/api/states/all"
     try:
-        auth = (OPENSKY_USERNAME, OPENSKY_PASSWORD)
-        r = requests.get(url, timeout=10, auth=auth)
+        r = requests.get(url, timeout=10)
         r.raise_for_status()
         flights = r.json().get("states", [])
         st.session_state[cache_key] = flights
         st.session_state[cache_time_key] = now
-        return flights, 0
+        return flights
     except Exception as e:
         st.error(f"Error fetching flight data: {e}")
-        return [], 0
+        return []
 
 def is_near_home(lat, lon):
     if lat is None or lon is None:
@@ -91,8 +89,9 @@ def is_near_home(lat, lon):
     return haversine(HOME_LAT, HOME_LON, lat, lon) <= MAX_DISTANCE_KM
 
 def is_sjc_flight(callsign):
-    # Check if 'SJC' is in the callsign (case-insensitive)
-    return callsign and "SJC" in callsign.upper()
+    # This function is not useful as flight callsigns don't contain airport codes
+    # Keeping for potential future use or removal
+    return False
 
 def extract_details(callsign, icao24):
     cs = callsign.strip() if callsign else ""
@@ -119,8 +118,7 @@ def lookup_aircraft_type(icao24):
         return st.session_state[cache_key]
     url = f"https://opensky-network.org/api/metadata/aircraft/icao24/{icao24}"
     try:
-        auth = (OPENSKY_USERNAME, OPENSKY_PASSWORD) if OPENSKY_USERNAME and OPENSKY_PASSWORD else None
-        r = requests.get(url, timeout=10, auth=auth)
+        r = requests.get(url, timeout=10)
         r.raise_for_status()
         data = r.json()
         # Try to get model or type
@@ -133,53 +131,11 @@ def lookup_aircraft_type(icao24):
 # ==== UI ====
 
 st.set_page_config(page_title="Flights Overhead from SJC", layout="centered")
+st.title("🛫 Flights Overhead")
+now_pst = datetime.now(ZoneInfo("America/Los_Angeles"))
+st.caption(f"Live from SJC | {now_pst.strftime('%Y-%m-%d %I:%M:%S %p')} PST")
 
-# --- Manual Refresh Button ---
-refresh_clicked = False
-if 'flight_cache_time' in st.session_state:
-    last_fetch = st.session_state['flight_cache_time']
-else:
-    last_fetch = 0
-now = time.time()
-seconds_since_last = int(now - last_fetch)
-wait_seconds = 30 - seconds_since_last
-
-refresh_col, _ = st.columns([1, 8])
-with refresh_col:
-    refresh_clicked = st.button(
-        label="\U0001F504",  # Unicode for refresh icon
-        help="Refresh flight data",
-        key="refresh_button",
-        use_container_width=True,
-        )
-    st.markdown(
-        f"""
-        <style>
-        button[data-testid="baseButton-secondary"] {{
-            background-color: #A8C7FA !important;
-            color: #fff !important;
-            border-radius: 12px !important;
-            font-size: 1.5rem !important;
-            height: 48px !important;
-            width: 48px !important;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-# --- Fetch flights only if allowed ---
-if refresh_clicked:
-    if seconds_since_last < 30:
-        st.warning(f"Please wait {wait_seconds} seconds before refreshing to avoid rate limit.")
-        flights, _ = get_flights(force_refresh=False)
-    else:
-        flights, _ = get_flights(force_refresh=True)
-else:
-    flights, _ = get_flights(force_refresh=False)
+flights = get_flights()
 
 visible = []
 
