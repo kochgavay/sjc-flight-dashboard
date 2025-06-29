@@ -5,8 +5,8 @@ from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
 
 # ==== CONFIG ====
-HOME_LAT = 37.3   # your home latitude
-HOME_LON = -121.8  # your home longitude
+HOME_LAT = 37.399746   # your home latitude
+HOME_LON = -121.962585  # your home longitude
 MAX_DISTANCE_KM = 3.2  # 2 miles
 
 # Airline code lookup (callsign prefixes)
@@ -53,7 +53,7 @@ def haversine(lat1, lon1, lat2, lon2):
     R = 6371
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) *         math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 def get_flights():
@@ -70,6 +70,10 @@ def is_near_home(lat, lon):
     if lat is None or lon is None:
         return False
     return haversine(HOME_LAT, HOME_LON, lat, lon) <= MAX_DISTANCE_KM
+
+def is_sjc_flight(callsign):
+    # Check if 'SJC' is in the callsign (case-insensitive)
+    return callsign and "SJC" in callsign.upper()
 
 def extract_details(callsign, icao24):
     cs = callsign.strip() if callsign else ""
@@ -92,7 +96,7 @@ def extract_details(callsign, icao24):
 st.set_page_config(page_title="Flights Overhead from SJC", layout="centered")
 st_autorefresh(interval=30000, key="flight_refresh")
 
-st.title("🛫 Flights Overhead (2 mi radius from home)")
+st.title("🛫 Flights Overhead")
 st.caption(f"Live from SJC | {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 flights = get_flights()
@@ -104,7 +108,7 @@ for f in flights:
     lon, lat = f[5], f[6]
     on_ground = f[8]
 
-    if lat and lon and is_near_home(lat, lon):
+    if lat and lon and is_near_home(lat, lon) and is_sjc_flight(callsign):
         dest, airline, flight_no, ac_type = extract_details(callsign, icao24)
         visible.append({
             "Destination": dest,
@@ -116,7 +120,7 @@ for f in flights:
 if visible:
     for flight in visible:
         st.markdown(f"""
-        <div style="padding:15px; margin-bottom:15px; border-radius:10px; background-color:#f7f7f7;">
+        <div style="padding:15px; margin-bottom:15px; border-radius:10px; background-color:#343434;">
             <div style="font-size:2rem; font-weight:bold;">{flight['Destination']}</div>
             <div style="font-size:1rem;">{flight['Airline']} | {flight['Flight Number']}</div>
             <div style="font-size:1rem;">{flight['Aircraft Type']}</div>
