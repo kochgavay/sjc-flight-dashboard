@@ -97,7 +97,7 @@ st.set_page_config(page_title="Flights Overhead from SJC", layout="centered")
 st_autorefresh(interval=30000, key="flight_refresh")
 
 st.title("🛫 Flights Overhead")
-st.caption(f"Live from SJC | {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+st.caption(f"Live from SJC | {datetime.now().astimezone(pytz.timezone('US/Pacific')).strftime('%Y-%m-%d %H:%M:%S %Z')}")
 
 flights = get_flights()
 visible = []
