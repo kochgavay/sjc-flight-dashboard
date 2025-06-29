@@ -120,8 +120,8 @@ def lookup_aircraft_type(icao24):
         return st.session_state[cache_key]
     url = f"https://opensky-network.org/api/metadata/aircraft/icao24/{icao24}"
     try:
-        auth = (OPENSKY_USERNAME, OPENSKY_PASSWORD) if OPENSKY_USERNAME and OPENSKY_PASSWORD else None
-        r = requests.get(url, timeout=10, auth=auth)
+        #auth = (OPENSKY_USERNAME, OPENSKY_PASSWORD) if OPENSKY_USERNAME and OPENSKY_PASSWORD else None
+        r = requests.get(url, timeout=10,)
         r.raise_for_status()
         data = r.json()
         # Try to get model or type
