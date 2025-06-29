@@ -50,14 +50,9 @@ AIRCRAFT_TYPES = {
 }
 
 # ==== AUTH CONFIG ====
-# Try to get credentials from environment variables
-OPENSKY_USERNAME = os.environ.get("OPENSKY_USERNAME")
-OPENSKY_PASSWORD = os.environ.get("OPENSKY_PASSWORD")
-
-if not OPENSKY_USERNAME or not OPENSKY_PASSWORD:
-    st.warning("Enter your OpenSky credentials. (They will not be stored)")
-    OPENSKY_USERNAME = st.text_input("OpenSky Username", type="default", key="opensky_user")
-    OPENSKY_PASSWORD = st.text_input("OpenSky Password", type="password", key="opensky_pass")
+# Use provided OpenSky credentials directly
+OPENSKY_USERNAME = "tushk@umich.edu-api-client"
+OPENSKY_PASSWORD = "V422R3Q8TnNd9L04Pe6sq8khsjMkwnB0"
 
 # ==== FUNCTIONS ====
 
