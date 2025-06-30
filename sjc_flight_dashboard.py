@@ -50,6 +50,54 @@ AIRCRAFT_TYPES = {
     "MD90": "McDonnell Douglas MD-90"
 }
 
+# ICAO to city name mapping for major airports
+ICAO_TO_CITY = {
+    "KSFO": "San Francisco",
+    "KLAX": "Los Angeles",
+    "KSJC": "San Jose",
+    "KSEA": "Seattle/Tacoma",
+    "KDEN": "Denver",
+    "KORD": "Chicago (O'Hare)",
+    "KDFW": "Dallas/Fort Worth",
+    "KPHX": "Phoenix",
+    "KJFK": "New York",
+    "KATL": "Atlanta",
+    "KPDX": "Portland",
+    "KLAS": "Las Vegas",
+    "KOAK": "Oakland",
+    "KSAN": "San Diego",
+    "KDAL": "Dallas (Love Field)",
+    "KMDW": "Chicago (Midway)",
+    "KDTW": "Detroit",
+    "KGEG": "Spokane",
+    "KSTL": "St. Louis",
+    "KMSP": "Minneapolis/St. Paul",
+    "KONT": "Ontario",
+    "KSNA": "Orange County (Santa Ana)",
+    "KPSP": "Palm Springs",
+    "KLGB": "Long Beach",
+    "KBOI": "Boise",
+    "KBUR": "Burbank",
+    "KEUG": "Eugene",
+    "KHOU": "Houston (Hobby)",
+    "KIAH": "Houston (Intercontinental)",
+    "KBNA": "Nashville",
+    "KAUS": "Austin",
+    "KBWI": "Baltimore/Washington",
+    "KRNO": "Reno/Tahoe",
+    "KSLC": "Salt Lake City",
+    "PHOG": "Kahului (Maui)",
+    "PHKO": "Kona (Big Island)",
+    "KLIH": "Lihue",
+    "MMGL": "Guadalajara",
+    "MMLO": "León (Guanajuato)",
+    "MMMM": "Morelia",
+    "MMPR": "Puerto Vallarta",
+    "MMSD": "San José del Cabo (Los Cabos)",
+    "MMZC": "Zacatecas",
+    "RJAA": "Tokyo–Narita",
+}
+
 # ==== AUTH CONFIG ====
 # No authentication (use free OpenSky API, subject to rate limits)
 
@@ -128,6 +176,29 @@ def lookup_aircraft_type(icao24):
     except Exception:
         return "Unknown Type"
 
+def get_flight_route(icao24):
+    import time
+    now = int(time.time())
+    begin = now - 2 * 3600  # last 2 hours
+    end = now
+    cache_key = f"route_{icao24}"
+    if cache_key in st.session_state:
+        return st.session_state[cache_key]
+    url = f"https://opensky-network.org/api/flights/aircraft?icao24={icao24}&begin={begin}&end={end}"
+    try:
+        r = requests.get(url, timeout=10)
+        r.raise_for_status()
+        flights = r.json()
+        if flights:
+            flight = flights[-1]  # most recent
+            dep = flight.get('estDepartureAirport')
+            arr = flight.get('estArrivalAirport')
+            st.session_state[cache_key] = (dep, arr)
+            return dep, arr
+    except Exception as e:
+        return None, None
+    return None, None
+
 # ==== UI ====
 
 st.set_page_config(page_title="Flights Overhead from SJC", layout="centered")
@@ -146,10 +217,22 @@ for f in flights:
     on_ground = f[8]
 
     if lat and lon and is_near_home(lat, lon):
-        dest, airline, flight_no, _ = extract_details(callsign, icao24)
+        dep, arr = get_flight_route(icao24)
+        # Only show flights arriving to or departing from SJC
+        city = None
+        label = None
+        if arr == "KSJC" and dep:
+            city = ICAO_TO_CITY.get(dep, dep)
+            label = f"From {city}"
+        elif dep == "KSJC" and arr:
+            city = ICAO_TO_CITY.get(arr, arr)
+            label = f"To {city}"
+        if not city:
+            continue  # skip flights not to/from SJC
+        airline, flight_no = extract_details(callsign, icao24)[1:3]
         ac_type = lookup_aircraft_type(icao24)
         visible.append({
-            "Destination": dest,
+            "CityLabel": label,
             "Airline": airline,
             "Flight Number": flight_no,
             "Aircraft Type": ac_type
@@ -159,7 +242,7 @@ if visible:
     for flight in visible:
         st.markdown(f"""
         <div style="padding:15px; margin-bottom:15px; border-radius:10px; background-color:#343434;">
-            <div style="font-size:2rem; font-weight:bold;">{flight['Destination']}</div>
+            <div style="font-size:2rem; font-weight:bold;">{flight['CityLabel']}</div>
             <div style="font-size:1rem;">{flight['Airline']} | {flight['Flight Number']}</div>
             <div style="font-size:1rem;">{flight['Aircraft Type']}</div>
         </div>
