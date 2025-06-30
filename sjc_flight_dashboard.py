@@ -218,8 +218,6 @@ for f in flights:
 
     if lat and lon and is_near_home(lat, lon):
         dep, arr = get_flight_route(icao24)
-        # Only show flights arriving to or departing from SJC
-        city = None
         label = None
         if arr == "KSJC" and dep:
             city = ICAO_TO_CITY.get(dep, dep)
@@ -227,8 +225,9 @@ for f in flights:
         elif dep == "KSJC" and arr:
             city = ICAO_TO_CITY.get(arr, arr)
             label = f"To {city}"
-        if not city:
-            continue  # skip flights not to/from SJC
+        if not label:
+            # fallback: show callsign or 'Unknown Flight'
+            label = callsign or "Unknown Flight"
         airline, flight_no = extract_details(callsign, icao24)[1:3]
         ac_type = lookup_aircraft_type(icao24)
         visible.append({
