@@ -147,7 +147,7 @@ def extract_details(callsign, icao24):
     flight_number = cs[3:].strip() if len(cs) > 3 else "Unknown"
     airline = AIRLINE_CODES.get(airline_code, "Private")
 
-    destination = f"{airline_code} {flight_number}" if airline != "Private" else "Private Flight"
+    # destination is now handled in the main loop using get_flight_route and ICAO_TO_CITY
 
     aircraft_type = "Unknown Type"
     for prefix, type_name in AIRCRAFT_TYPES.items():
@@ -155,7 +155,7 @@ def extract_details(callsign, icao24):
             aircraft_type = type_name
             break
 
-    return destination, airline, f"{airline_code}{flight_number}", aircraft_type
+    return airline, f"{airline_code}{flight_number}", aircraft_type
 
 def lookup_aircraft_type(icao24):
     """Lookup aircraft type/model from OpenSky aircraft database using icao24. Cache results in session state."""
@@ -219,17 +219,13 @@ for f in flights:
     if lat and lon and is_near_home(lat, lon):
         dep, arr = get_flight_route(icao24)
         label = None
-        if arr == "KSJC" and dep:
-            city = ICAO_TO_CITY.get(dep, dep)
-            label = f"From {city}"
-        elif dep == "KSJC" and arr:
-            city = ICAO_TO_CITY.get(arr, arr)
-            label = f"To {city}"
-        if not label:
-            # fallback: show callsign or 'Unknown Flight'
+        if arr and arr in ICAO_TO_CITY:
+            label = f"To {ICAO_TO_CITY[arr]}"
+        elif dep and dep in ICAO_TO_CITY:
+            label = f"From {ICAO_TO_CITY[dep]}"
+        else:
             label = callsign or "Unknown Flight"
-        airline, flight_no = extract_details(callsign, icao24)[1:3]
-        ac_type = lookup_aircraft_type(icao24)
+        airline, flight_no, ac_type = extract_details(callsign, icao24)
         visible.append({
             "CityLabel": label,
             "Airline": airline,
