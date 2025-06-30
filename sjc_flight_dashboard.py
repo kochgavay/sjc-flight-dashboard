@@ -250,7 +250,7 @@ if visible:
 else:
     st.markdown("""
     <div style="padding:20px; margin-top:20px; text-align:center; font-size:1.5rem; color:#555;">
-        🌤️ Clear skies above!
+        🌤️ Clear skies!
     </div>
     """, unsafe_allow_html=True)
 
